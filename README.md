@@ -10,6 +10,8 @@ actions.
 
 [中文说明](README.zh.md) · [Lifecycle notes](docs/lifecycle.md) (Chinese)
 
+![The fork graph panel: two conversations on two lanes, a fork point and the root row](docs/panel.png)
+
 ## What it does
 
 - **The tree of the current conversation only.** A single-session tree still opens and draws
@@ -100,6 +102,14 @@ always records the first build after a restart and the last ten builds (trigger 
   background, never on the boot path.
 - Fork points and the `root` row are not clickable; they have no conversation of their own.
 - The lane palette is fixed so branches keep their colour across themes.
+
+## Credits
+
+The idea of putting a fork graph into the conversation header — and the overall shape of the graph —
+comes from [chouyong/dsh-fork-graph](https://github.com/chouyong/dsh-fork-graph). This plugin is an
+independent implementation: the Host half derives the lineage itself from the session logs (shared
+event prefixes, content-based fork positions), and the client adds the lane layout, per-row actions
+and the archived toggle. Thanks to the upstream author for the inspiration.
 
 ## License
 
