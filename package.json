@@ -1,0 +1,43 @@
+{
+  "name": "dsh-fork-graph",
+  "version": "0.1.0",
+  "description": "Git-style fork graph of the current conversation's session tree, in the DeepSeek Harness conversation header.",
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "plugin",
+    "session",
+    "fork",
+    "graph"
+  ],
+  "license": "MIT",
+  "author": "deepseek",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./assets/*": "./lib/assets/*",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "lib/assets",
+    "README.md",
+    "README.zh.md",
+    "docs",
+    "LICENSE"
+  ]
+}

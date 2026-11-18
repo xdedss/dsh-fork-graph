@@ -1,0 +1,14 @@
+# dependencies / tooling
+node_modules/
+pnpm-lock.yaml
+
+# runtime artifacts written by the Host half — they contain session ids and titles
+lib/assets/*.json
+lib/assets/*.log
+dev-cache.json
+
+# scratch output
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
