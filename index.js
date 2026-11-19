@@ -215,7 +215,14 @@ function safeStat(file) {
 
 /** Bump when the projection shape or the fingerprint changes. */
 const CACHE_VERSION = 1
-const CACHE_FILE = process.env.DSH_FORK_GRAPH_CACHE ?? join(HOME, 'storages', 'fork-graph-cache.json')
+/**
+ * One cache per profile: desktop and `dsh web` may run at the same time, and two
+ * hosts rewriting one file would occasionally read a half-written cache.
+ */
+const PROFILE_SUFFIX = process.env.DSH_PROFILE === undefined || process.env.DSH_PROFILE === ''
+  ? ''
+  : '-' + process.env.DSH_PROFILE.replace(/[^a-z0-9._-]/gi, '')
+const CACHE_FILE = process.env.DSH_FORK_GRAPH_CACHE ?? join(HOME, 'storages', 'fork-graph-cache' + PROFILE_SUFFIX + '.json')
 /** Rewriting a multi-megabyte cache on every refresh would cost more than it saves. */
 const CACHE_WRITE_INTERVAL_MS = 5 * 60 * 1000
 let lastCacheWrite = 0

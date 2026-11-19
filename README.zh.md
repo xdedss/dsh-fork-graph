@@ -35,8 +35,10 @@ DeepSeek Harness 会话的 git 风格分叉图，内联在会话标题栏。
 | Host | `index.js` | 读会话日志、算血缘与布局，通过 `/plugins/dsh-fork-graph/lineage.json` 发布 JSON（另有一条强制重建路由） |
 | Client | `client.js` | 只负责绘制发布出来的布局、跳转与动作，不做任何分析 |
 
-Host 按文件 `mtime + size` 在 `$DSH_HOME/storages/fork-graph-cache.json` 缓存解析结果，
-重启后只解析变化过的日志。刷新时机与一次构建的完整步骤见 [docs/lifecycle.md](docs/lifecycle.md)。
+Host 按文件 `mtime + size` 在 `$DSH_HOME/storages/fork-graph-cache-<profile>.json` 缓存解析结果
+（没有 profile 时就是 `fork-graph-cache.json`），重启后只解析变化过的日志。每个 profile 各自一份缓存，
+`desktop` 与 `dsh web` 可以同时运行而不会互相改写同一个文件。刷新时机与一次构建的完整步骤见
+[docs/lifecycle.md](docs/lifecycle.md)。
 
 ## 安装
 

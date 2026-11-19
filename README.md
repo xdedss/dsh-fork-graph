@@ -42,9 +42,11 @@ exact prefix of its source log. So the plugin has two halves:
 | Host | `index.js` | reads session logs, computes lineage and layout, publishes JSON on `/plugins/dsh-fork-graph/lineage.json` (plus a rebuild route) |
 | Client | `client.js` | draws the published layout, handles navigation and actions — no analysis |
 
-The Host reuses a per-file parse cache on disk (`$DSH_HOME/storages/fork-graph-cache.json`), so a
-restart only parses what changed. See [docs/lifecycle.md](docs/lifecycle.md) for every refresh
-trigger and the full build pipeline.
+The Host reuses a per-file parse cache on disk
+(`$DSH_HOME/storages/fork-graph-cache-<profile>.json`, or without the suffix when no profile is
+active), so a restart only parses what changed. Each profile keeps its own cache: `desktop` and
+`dsh web` can run at the same time without rewriting one file. See
+[docs/lifecycle.md](docs/lifecycle.md) for every refresh trigger and the full build pipeline.
 
 ## Install
 
