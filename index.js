@@ -15,7 +15,7 @@
  */
 import { readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 import zlib from 'node:zlib'
@@ -216,13 +216,14 @@ function safeStat(file) {
 /** Bump when the projection shape or the fingerprint changes. */
 const CACHE_VERSION = 1
 /**
- * One cache per profile: desktop and `dsh web` may run at the same time, and two
- * hosts rewriting one file would occasionally read a half-written cache.
+ * One cache per host: desktop and `dsh web` may run at the same time, and two
+ * hosts rewriting one file would occasionally read a half-written cache. The
+ * profile name is used when the host exports it; the desktop app launches its
+ * host directly, so fall back to the kind of host instead.
  */
-const PROFILE_SUFFIX = process.env.DSH_PROFILE === undefined || process.env.DSH_PROFILE === ''
-  ? ''
-  : '-' + process.env.DSH_PROFILE.replace(/[^a-z0-9._-]/gi, '')
-const CACHE_FILE = process.env.DSH_FORK_GRAPH_CACHE ?? join(HOME, 'storages', 'fork-graph-cache' + PROFILE_SUFFIX + '.json')
+const HOST_TAG = (process.env.DSH_PROFILE
+  || (process.versions.electron === undefined ? 'cli' : 'desktop')).replace(/[^a-z0-9._-]/gi, '')
+const CACHE_FILE = process.env.DSH_FORK_GRAPH_CACHE ?? join(HOME, 'storages', 'fork-graph-cache-' + HOST_TAG + '.json')
 /** Rewriting a multi-megabyte cache on every refresh would cost more than it saves. */
 const CACHE_WRITE_INTERVAL_MS = 5 * 60 * 1000
 let lastCacheWrite = 0
@@ -766,6 +767,8 @@ async function build(fresh, trigger) {
   const stats = {
     at: new Date().toISOString(),
     trigger: trigger ?? 'unknown',
+    host: HOST_TAG,
+    cache: basename(CACHE_FILE),
     sessions: sessions.length,
     families: families.length,
     drawn: families.length,

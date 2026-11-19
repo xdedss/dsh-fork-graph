@@ -43,10 +43,11 @@ exact prefix of its source log. So the plugin has two halves:
 | Client | `client.js` | draws the published layout, handles navigation and actions — no analysis |
 
 The Host reuses a per-file parse cache on disk
-(`$DSH_HOME/storages/fork-graph-cache-<profile>.json`, or without the suffix when no profile is
-active), so a restart only parses what changed. Each profile keeps its own cache: `desktop` and
-`dsh web` can run at the same time without rewriting one file. See
-[docs/lifecycle.md](docs/lifecycle.md) for every refresh trigger and the full build pipeline.
+(`$DSH_HOME/storages/fork-graph-cache-<host>.json`), so a restart only parses what changed. The
+`<host>` tag is the profile name when the host exports `DSH_PROFILE`, and otherwise the kind of host
+(`desktop` for the Electron app, `cli` for a plain Node process): `desktop` and `dsh web` can run at
+the same time without rewriting one file. See [docs/lifecycle.md](docs/lifecycle.md) for every
+refresh trigger and the full build pipeline.
 
 ## Install
 
