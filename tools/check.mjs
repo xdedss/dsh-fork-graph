@@ -47,6 +47,31 @@ if (route !== undefined) {
   const prefixes = served.families.flatMap((family) => family.all?.rows ?? []).filter((row) => row.kind === 'fork' || row.kind === 'fork+head').map((row) => row.prefix)
   check('a conversation position is a single fork row', new Set(prefixes).size === prefixes.length, prefixes.join(','))
   check('every family has a drawable layout', served.families.every((family) => family.all !== undefined))
+
+  // every variant must be a closed tree: no fork row pointing at a hidden
+  // session, no row without a rail, no fork point without a branch
+  check('payload reports no structure problems', served.problems === undefined, JSON.stringify(served.problems?.slice(0, 3)))
+  let orphanForks = 0
+  let floatingRows = 0
+  let branchlessForks = 0
+  for (const family of served.families) {
+    for (const variant of ['all', 'active']) {
+      const layout = family[variant]
+      if (layout === undefined) continue
+      const visible = new Set(layout.rows.map((row) => row.sessionId).filter(Boolean))
+      const incoming = new Set(layout.segments.map((segment) => segment.to))
+      const branching = new Set(layout.segments.filter((segment) => segment.elbow !== undefined).map((segment) => segment.elbow.row))
+      for (const row of layout.rows) {
+        if (row.kind === 'root') continue
+        if (!incoming.has(row.index)) floatingRows += 1
+        if (row.kind === 'fork' && !branching.has(row.index)) branchlessForks += 1
+        if (row.forkFrom !== undefined && !visible.has(row.forkFrom.sessionId)) orphanForks += 1
+      }
+    }
+  }
+  check('no fork row points outside its tree', orphanForks === 0, String(orphanForks))
+  check('every row is attached to a rail', floatingRows === 0, String(floatingRows))
+  check('every fork point has a branch', branchlessForks === 0, String(branchlessForks))
   const orphan = Object.keys(served.index).find((id) => served.families[served.index[id].family]?.all === undefined)
   check('no session points at a family without a layout', orphan === undefined, String(orphan))
   const rebuiltResponse = await rebuildRoute.resource()

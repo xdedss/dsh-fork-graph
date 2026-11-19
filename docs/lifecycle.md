@@ -74,13 +74,17 @@
 5. measureSessions()  内容事件前缀和 countBefore、countTotal、headTime、prefixEndTime
 6. groupFamilies()    并查集：共享任意前缀即同族
 7. 逐家族（≥2 个成员才布局）
+     `all` 用全量血缘；`active` **在未归档子集内重算血缘**（克隆对象，避免污染全量），
+     这样父被隐藏的子代会自动挂到最近的可见祖先，而不是落到 root 或留下孤儿分叉点
      findForkPoints()  按"第几条内容事件"归并分叉点；取 owner（被复制方）；算 atSeq
      buildRows()       头部正好停在分叉点 → 合并成 fork+head；时间倒序编号；末尾追加 root
      assignLanes()     从 root 向下走，每个分叉点交出一条轨道给一个分支，其余开新轨道
      assignDeltas()    同一轨道上，本节点 = 累计 − 上一个节点累计
      serializeRow()    输出客户端直接绘制的行（kind/lane/prefix/total/delta/time/…）
-8. JSON.stringify → 内存 latest ＋ 调试副本 lib/assets/lineage.json
-9. 磁盘缓存：有文件被重新解析且距上次写入 >5 min 才写（约 8 MB）
+8. 结构自检：每个非 root 行都必须有轨道接入、每个 fork 行必须有分支、fork 行不得指向
+   可见集合之外的会话；发现问题会写进 payload 的 problems，客户端在面板底部提示
+9. JSON.stringify → 内存 latest ＋ 调试副本 lib/assets/lineage.json
+10. 磁盘缓存：有文件被重新解析且距上次写入 >5 min 才写（约 8 MB）
 ```
 
 family 的 `size` 只在第 7 步排序与建索引时使用，不进入 payload。

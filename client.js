@@ -67,6 +67,7 @@ window.__ModuleLoader__.load({
         'archive.stop': '停止并归档',
         'archive.cancel': '取消',
         'error.load': '无法读取分叉数据',
+        'error.structure': '结构自检发现 {count} 个问题（悬停查看）',
         'age.now': '刚刚',
       },
       en: {
@@ -92,6 +93,7 @@ window.__ModuleLoader__.load({
         'archive.stop': 'Stop and archive',
         'archive.cancel': 'Cancel',
         'error.load': 'Could not read fork data',
+        'error.structure': 'Structure check found {count} issue(s) - hover for details',
         'age.now': 'now',
       },
     }
@@ -782,13 +784,18 @@ window.__ModuleLoader__.load({
           onClick: () => { setStopRequest(undefined) },
         }, t('archive.cancel')))
 
+      const structureNote = (data?.problems?.length ?? 0) === 0 ? null : h('div', {
+        className: 'dfg__note',
+        title: data.problems.join('\n'),
+      }, t('error.structure', { count: data.problems.length }))
+
       const panelNode = h('div', {
         ref: panelRef,
         className: 'dfg__panel',
         role: 'dialog',
         'aria-label': t('panel.label'),
         style: { left: position?.left, top: position?.top, width: position?.width },
-      }, head, body, stopStrip,
+      }, head, body, stopStrip, structureNote,
       error === undefined ? null : h('div', { className: 'dfg__error' }, error),
       failed ? h('div', { className: 'dfg__note' }, t('error.load')) : null)
 

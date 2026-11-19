@@ -414,35 +414,50 @@ function resolveLineage(sessions) {
     }
     session.forkDepth = marker
     session.source = marker === -1 ? undefined : source
+    // the marker must sit inside the source's own log, or the point it implies
+    // cannot be reached in that session (a stale artefact of a recomputed subset)
+    if (session.source !== undefined && marker > session.source.events.length) {
+      session.forkDepth = -1
+      session.source = undefined
+    }
   }
 }
 
-/** Content counters and the timestamps the rows show. */
+/** Content counters and the head timestamp; independent of lineage. */
+function measureCounts(session) {
+  const countBefore = new Int32Array(session.events.length + 1)
+  let counted = 0
+  let lastCountedTime
+
+  for (let index = 0; index < session.events.length; index += 1) {
+    const event = session.events[index]
+    if (isCounted(event)) {
+      counted += 1
+      lastCountedTime = event.time
+    }
+    countBefore[index + 1] = counted
+  }
+
+  session.countBefore = countBefore
+  session.countTotal = counted
+  session.headTime = Math.max(session.createdAt, lastCountedTime ?? session.createdAt)
+}
+
+/** The time of the last content event before the fork point; needs forkDepth. */
+function measureForkPoint(session) {
+  session.prefixEndTime = undefined
+  for (let index = session.forkDepth - 1; index >= 0; index -= 1) {
+    if (isCounted(session.events[index])) {
+      session.prefixEndTime = session.events[index].time
+      break
+    }
+  }
+}
+
 function measureSessions(sessions) {
   for (const session of sessions) {
-    const countBefore = new Int32Array(session.events.length + 1)
-    let counted = 0
-    let lastCountedTime
-
-    for (let index = 0; index < session.events.length; index += 1) {
-      const event = session.events[index]
-      if (isCounted(event)) {
-        counted += 1
-        lastCountedTime = event.time
-      }
-      countBefore[index + 1] = counted
-    }
-
-    session.countBefore = countBefore
-    session.countTotal = counted
-    session.headTime = Math.max(session.createdAt, lastCountedTime ?? session.createdAt)
-    session.prefixEndTime = undefined
-    for (let index = session.forkDepth - 1; index >= 0; index -= 1) {
-      if (isCounted(session.events[index])) {
-        session.prefixEndTime = session.events[index].time
-        break
-      }
-    }
+    measureCounts(session)
+    measureForkPoint(session)
   }
 }
 
@@ -703,6 +718,23 @@ function layOutFamily(members) {
   }
 }
 
+/**
+ * The same family without its archived sessions.
+ *
+ * Hiding a session removes a node from the tree, so the children of that node
+ * must re-parent: lineage is recomputed inside the subset instead of reusing the
+ * full-set answer, which pointed at sessions that are no longer drawn. Clones
+ * keep the full-set lineage intact for the `all` variant.
+ */
+function layOutVisible(members) {
+  const visible = members.filter((session) => !session.archived)
+  if (visible.length === 0) return undefined
+  const clones = visible.map((session) => ({ ...session }))
+  resolveLineage(clones)
+  for (const session of clones) measureForkPoint(session)
+  return layOutFamily(clones)
+}
+
 // ---------------------------------------------------------------- payload
 
 /** One line per build when DSH_FORK_GRAPH_DEBUG=1, to see where the time goes. */
@@ -728,6 +760,22 @@ function recordStats(stats) {
   }
 }
 
+/**
+ * Structural invariants of a published layout. A failure means the drawing would
+ * lie about the tree, so it travels in the payload instead of being drawn silently.
+ */
+function validate(label, layout, problems) {
+  const visible = new Set(layout.rows.map((row) => row.sessionId).filter(Boolean))
+  const incoming = new Set(layout.segments.map((segment) => segment.to))
+  const branching = new Set(layout.segments.filter((segment) => segment.elbow !== undefined).map((segment) => segment.elbow.row))
+  for (const row of layout.rows) {
+    if (row.kind === 'root') continue
+    if (!incoming.has(row.index)) problems.push(label + ': row ' + row.index + ' (' + row.kind + ') has no rail')
+    if (row.kind === 'fork' && !branching.has(row.index)) problems.push(label + ': fork row ' + row.index + ' (prefix ' + row.prefix + ') has no branch')
+    if (row.forkFrom !== undefined && !visible.has(row.forkFrom.sessionId)) problems.push(label + ': fork row ' + row.index + ' points outside the tree')
+  }
+}
+
 /** Convert the serializable data into the payload the client draws. */
 async function build(fresh, trigger) {
   const started = performance.now()
@@ -743,15 +791,18 @@ async function build(fresh, trigger) {
   const grouped = performance.now()
 
   const families = []
+  const problems = []
   for (const members of groups) {
-    const activeMembers = members.filter((session) => !session.archived)
-    // every family gets a layout: even a lone conversation draws root + itself,
-    // so the panel is always available for an unarchived session
+    // `all` keeps the full lineage; `active` recomputes it without archived sessions
+    const all = layOutFamily(members)
+    const active = layOutVisible(members)
+    validate('all', all, problems)
+    if (active !== undefined) validate('visible', active, problems)
     families.push({
       size: members.length,
       ids: members.map((session) => ({ id: session.id, archived: session.archived === true })),
-      all: layOutFamily(members),
-      active: activeMembers.length > 0 ? layOutFamily(activeMembers) : undefined,
+      all,
+      active,
     })
     // only large families are expensive enough to be worth yielding for
     if (members.length >= 2) await breathe()
@@ -772,6 +823,7 @@ async function build(fresh, trigger) {
     sessions: sessions.length,
     families: families.length,
     drawn: families.length,
+    problems: problems.length,
     warm: load.warm,
     cold: load.cold,
     parsed: load.parsed,
@@ -791,6 +843,7 @@ async function build(fresh, trigger) {
     generatedAt: Date.now(),
     families: families.map((family) => ({ all: family.all, active: family.active })),
     index,
+    ...(problems.length === 0 ? {} : { problems: problems.slice(0, 20) }),
   }
 }
 
